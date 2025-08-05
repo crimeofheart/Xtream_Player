@@ -3,13 +3,19 @@
 set -e
 
 # Check if PyInstaller is installed
-if ! command -v pyinstaller &> /dev/null; then
-  echo "PyInstaller not found. Please install it with 'pip install pyinstaller'"
+if [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/pyinstaller" ]; then
+  # Use PyInstaller from active virtual environment
+  PYINSTALLER="$VIRTUAL_ENV/bin/pyinstaller"
+elif command -v pyinstaller &> /dev/null; then
+  # Use PyInstaller from PATH
+  PYINSTALLER="pyinstaller"
+else
+  echo "PyInstaller not found."
+  echo "Please ensure it is installed and in your PATH, or that you have activated a virtual environment with PyInstaller installed."
   exit 1
 fi
 
 # Set variables
-PYINSTALLER=pyinstaller
 MAIN_SCRIPT="IPTV M3U_Plus PLAYER by MY-1.py"
 BUILD_PATH="build"
 DIST_PATH="dist"

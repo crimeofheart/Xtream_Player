@@ -8,6 +8,7 @@ import configparser
 import re
 import json
 import html
+import unicodedata
 from lxml import etree, html
 from datetime import datetime
 from dateutil import parser, tz
@@ -38,6 +39,101 @@ is_mac      = sys.platform.startswith('darwin')
 is_linux    = sys.platform.startswith('linux')
 
 GITHUB_REPO = "Youri666/Xtream-m3u_plus-IPTV-Player"
+
+class LiveCategorySelectionDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.setWindowTitle("Select Live TV Categories")
+        self.setMinimumSize(400, 500)
+        
+        layout = QVBoxLayout(self)
+        
+        # Instructions
+        instructions = QLabel("Select which Live TV categories to load.\nLeave empty to load all categories.")
+        instructions.setWordWrap(True)
+        layout.addWidget(instructions)
+        
+        # Search box
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search categories...")
+        self.search_box.textChanged.connect(self.filter_categories)
+        layout.addWidget(self.search_box)
+        
+        # Select/Deselect all buttons
+        button_layout = QHBoxLayout()
+        self.select_all_btn = QPushButton("Select All")
+        self.deselect_all_btn = QPushButton("Deselect All")
+        self.select_all_btn.clicked.connect(self.select_all)
+        self.deselect_all_btn.clicked.connect(self.deselect_all)
+        button_layout.addWidget(self.select_all_btn)
+        button_layout.addWidget(self.deselect_all_btn)
+        layout.addLayout(button_layout)
+        
+        # Category list with checkboxes
+        self.category_list = QListWidget()
+        layout.addWidget(self.category_list)
+        
+        # Dialog buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+        
+        self.populate_categories()
+    
+    def populate_categories(self):
+        """Populate the category list with available live TV categories"""
+        self.category_list.clear()
+        
+        # Get available categories from the parent's loaded data
+        if hasattr(self.parent, 'categories_per_stream_type') and 'LIVE' in self.parent.categories_per_stream_type:
+            categories = self.parent.categories_per_stream_type['LIVE']
+            
+            for category in categories:
+                item = QListWidgetItem(category.get('category_name', ''))
+                item.setCheckState(Qt.Unchecked)
+                
+                # Check if this category is already selected (with Unicode normalization)
+                category_name = category.get('category_name', '')
+                if any(self.parent._normalize_category_name(category_name) == self.parent._normalize_category_name(selected) 
+                       for selected in self.parent.selected_live_categories):
+                    item.setCheckState(Qt.Checked)
+                
+                self.category_list.addItem(item)
+        else:
+            # No categories loaded yet, show message
+            item = QListWidgetItem("No categories available. Please load IPTV data first.")
+            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+            self.category_list.addItem(item)
+    
+    def filter_categories(self, text):
+        """Filter categories based on search text"""
+        for i in range(self.category_list.count()):
+            item = self.category_list.item(i)
+            item.setHidden(text.lower() not in item.text().lower())
+    
+    def select_all(self):
+        """Select all visible categories"""
+        for i in range(self.category_list.count()):
+            item = self.category_list.item(i)
+            if not item.isHidden():
+                item.setCheckState(Qt.Checked)
+    
+    def deselect_all(self):
+        """Deselect all categories"""
+        for i in range(self.category_list.count()):
+            item = self.category_list.item(i)
+            item.setCheckState(Qt.Unchecked)
+    
+    def get_selected_categories(self):
+        """Get list of selected category names"""
+        selected = []
+        for i in range(self.category_list.count()):
+            item = self.category_list.item(i)
+            if item.checkState() == Qt.Checked:
+                selected.append(item.text())
+        return selected
 
 class IPTVPlayerApp(QMainWindow):
     def __init__(self):
@@ -147,6 +243,9 @@ class IPTVPlayerApp(QMainWindow):
 
         # Whether to request the VODs or not
         self.vods_enabled = True
+        
+        # Selected live TV categories to load (empty list means load all)
+        self.selected_live_categories = []
 
         #Create search bar dicts
         self.category_search_bars   = {}
@@ -828,11 +927,18 @@ class IPTVPlayerApp(QMainWindow):
         self.auto_update_checkbox.setToolTip("Automatically check for updates at startup")
         self.auto_update_checkbox.stateChanged.connect(self.toggleAutoUpdate)
 
+        self.select_live_categories_button = QPushButton("Select Live TV Categories")
+        self.select_live_categories_button.setToolTip("Choose which Live TV categories to load")
+        self.select_live_categories_button.clicked.connect(self.open_category_selection_dialog)
+        
+        self.update_category_button_text()
+
         #Add widgets to settings tab layout
         self.settings_layout.addWidget(self.address_book_button,                            0, 0)
         self.settings_layout.addWidget(self.choose_player_button,                           0, 1)
         self.settings_layout.addWidget(self.vods_enabled_checkbox,                          1, 0)
         self.settings_layout.addWidget(self.keep_on_top_checkbox,                           2, 0)
+        self.settings_layout.addWidget(self.select_live_categories_button,                  1, 1)
         self.settings_layout.addWidget(QLabel("Default sorting order: "),                   3, 0)
         self.settings_layout.addWidget(self.default_sorting_order_box,                      3, 1)
         self.settings_layout.addWidget(QLabel("Select User-Agent (Advanced option): "),     4, 0)
@@ -892,6 +998,57 @@ class IPTVPlayerApp(QMainWindow):
             self.vods_enabled_checkbox.setCheckState(Qt.Checked)
         else:
             self.vods_enabled_checkbox.setCheckState(Qt.Unchecked)
+
+    def loadSelectedLiveCategories(self):
+        """Load selected live TV categories from config file"""
+        config = configparser.ConfigParser()
+        config.read(self.user_data_file, encoding='utf-8')
+        
+        if 'SelectedLiveCategories' in config:
+            categories_str = config['SelectedLiveCategories'].get('categories', '')
+            if categories_str:
+                # Handle both old comma format and new triple-pipe format
+                if '|||' in categories_str:
+                    self.selected_live_categories = [cat.strip() for cat in categories_str.split('|||') if cat.strip()]
+                else:
+                    self.selected_live_categories = [cat.strip() for cat in categories_str.split(',') if cat.strip()]
+            else:
+                self.selected_live_categories = []
+        else:
+            self.selected_live_categories = []
+
+    def saveSelectedLiveCategories(self):
+        """Save selected live TV categories to config file"""
+        config = configparser.ConfigParser()
+        config.read(self.user_data_file, encoding='utf-8')
+        
+        # Use a different separator to avoid issues with commas in category names
+        categories_str = '|||'.join(self.selected_live_categories)
+        config['SelectedLiveCategories'] = {'categories': categories_str}
+        
+        with open(self.user_data_file, 'w', encoding='utf-8') as config_file:
+            config.write(config_file)
+
+    def _normalize_category_name(self, name):
+        """Normalize category name for proper Unicode comparison"""
+        if not name:
+            return ""
+        try:
+            # Normalize Unicode to NFKC form for consistent comparison
+            normalized = unicodedata.normalize('NFKC', str(name))
+            return normalized.strip()
+        except Exception as e:
+            print(f"Warning: Unicode normalization failed for '{name}': {e}")
+            return str(name).strip()
+
+    def update_category_button_text(self):
+        """Update the category selection button to show number of selected categories"""
+        if hasattr(self, 'select_live_categories_button'):
+            if self.selected_live_categories:
+                count = len(self.selected_live_categories)
+                self.select_live_categories_button.setText(f"Select Live TV Categories ({count} selected)")
+            else:
+                self.select_live_categories_button.setText("Select Live TV Categories (All)")
 
     def checkForUpdates(self, enable_update_msg):
         try:
@@ -1005,6 +1162,9 @@ class IPTVPlayerApp(QMainWindow):
         #Load default auto update checker
         self.loadDefaultAutoUpdate()
 
+        #Load selected live categories
+        self.loadSelectedLiveCategories()
+        
         #Load startup credentials
         self.loadStartupCredentials()
 
@@ -1246,16 +1406,40 @@ class IPTVPlayerApp(QMainWindow):
 
             #Fill currently loaded streams with current stream data
             for entry in self.entries_per_stream_type[stream_type]:
-                self.currently_loaded_streams[stream_type].append(entry)
+                # For live TV, filter streams based on selected categories
+                if stream_type == 'LIVE' and self.selected_live_categories:
+                    # Get selected category IDs
+                    selected_category_ids = [cat.get('category_id') for cat in self.currently_loaded_categories[stream_type]]
+                    # Check if stream's category is in selected categories
+                    if entry.get('category_id') in selected_category_ids:
+                        self.currently_loaded_streams[stream_type].append(entry)
+                else:
+                    self.currently_loaded_streams[stream_type].append(entry)
 
             #Fill currently loaded categories with current category data
             for entry in self.categories_per_stream_type[stream_type]:
-                self.currently_loaded_categories[stream_type].append(entry)
+                # For live TV, filter categories based on selection
+                if stream_type == 'LIVE' and self.selected_live_categories:
+                    category_name = entry.get('category_name', '')
+                    normalized_category = self._normalize_category_name(category_name)
+                    
+                    # Check if this category should be included
+                    is_selected = any(normalized_category == self._normalize_category_name(selected) 
+                                    for selected in self.selected_live_categories)
+                    
+                    if is_selected:
+                        self.currently_loaded_categories[stream_type].append(entry)
+                        print(f"Including category: {category_name}")
+                    else:
+                        print(f"Filtering out category: {category_name}")
+                else:
+                    self.currently_loaded_categories[stream_type].append(entry)
 
-            #Add categories in category list
-            num_of_categories = len(self.categories_per_stream_type[stream_type])
+            #Add categories in category list (use filtered list for display)
+            categories_to_display = self.currently_loaded_categories[stream_type]
+            num_of_categories = len(categories_to_display)
             prev_perc = 0
-            for idx, category_item in enumerate(self.categories_per_stream_type[stream_type]):
+            for idx, category_item in enumerate(categories_to_display):
                 item = QListWidgetItem(category_item['category_name'])
                 item.setData(Qt.UserRole, category_item)
                 # item.setIcon(channel_icon)
@@ -1263,7 +1447,7 @@ class IPTVPlayerApp(QMainWindow):
                 #Add item to list
                 self.category_list_widgets[stream_type].addItem(item)
 
-                perc = (idx * 100) / num_of_categories
+                perc = (idx * 100) / num_of_categories if num_of_categories > 0 else 100
                 if (perc - prev_perc) > 10:
                     prev_perc = perc
                     self.set_progress_bar(int(perc), f"Loading {stream_type} categories: {idx} of {num_of_categories}")
@@ -2351,6 +2535,21 @@ class IPTVPlayerApp(QMainWindow):
     def open_address_book(self):
         dialog = AccountManager(self)
         dialog.exec_()
+
+    def open_category_selection_dialog(self):
+        """Open dialog to select which live TV categories to load"""
+        dialog = LiveCategorySelectionDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.selected_live_categories = dialog.get_selected_categories()
+            self.saveSelectedLiveCategories()
+            self.update_category_button_text()
+            
+            # Optionally reload data with new category selection
+            reply = QMessageBox.question(self, 'Reload Data', 
+                                         'Category selection saved. Do you want to reload data now?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.login()
 
 def main():
     app = QApplication(sys.argv)

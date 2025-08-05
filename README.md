@@ -70,12 +70,16 @@ python -m pip install --upgrade setuptools
 python -m pip install --upgrade pyinstaller
 python -m pip install --upgrade requests lxml python-dateutil PyQt5
 ```
+or simply: 
+```bash
+python -m pip install -r requirements.txt
+```
 
 ### 3. Verify that PyInstaller is installed correctly
 
 ```bash
 pyinstaller --version
-# Example of expected output: 6.14.0
+# Example of expected output: 6.15.0
 ```
 
 ### 4. Final Setup
@@ -87,8 +91,9 @@ pyinstaller --version
 - To compile Python yourself, download the [source code](https://www.python.org/downloads/source/)
 - Tested with Python 3.13.4\
  _Note:_  The following dependencies must be installed:\
-`dnf install python3-dev python-dev`\
-If you are building Python by yourself, rebuild with `--enable-shared` (or, `--enable-framework` on macOS).\
+`sudo dnf install python3-devel xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-xinerama`\
+\
+If you are building Python from source, you may need additional build dependencies and should build with the `--enable-shared` flag (or `--enable-framework` on macOS).
 
 ### 2. Open a Terminal and install all dependencies
 
@@ -114,3 +119,34 @@ pyinstaller --version
 - Make the SH script executable with the command:\
 `chmod +x build_iptv_player.sh`
 - Run the [./build_iptv_player.sh](build_iptv_player.sh) file to start the process.
+
+## Debian/Ubuntu Project Setup Instructions
+
+### 1. Install System Dependencies
+- It is recommended to use the system's Python 3.
+- The following dependencies must be installed for building the application:
+```bash
+sudo apt-get update
+sudo apt-get install python3-dev libxcb-icccm4 libxcb-render-util0 libxcb-keysyms1 libxcb-xinerama0 libxcb-image0
+```
+
+### 2. Create a Virtual Environment and Install Python Packages
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip setuptools pyinstaller
+python3 -m pip install --upgrade requests lxml python-dateutil PyQt5
+```
+
+### 3. Verify that PyInstaller is installed correctly
+
+```bash
+pyinstaller --version
+# Example of expected output: 6.14.0
+```
+
+### 4. Final Setup
+- Make the SH script executable with the command:\
+`chmod +x build_iptv_player.sh`
+- Run the ./build_iptv_player.sh file to start the process.
