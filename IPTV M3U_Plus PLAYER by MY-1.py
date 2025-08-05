@@ -32,13 +32,13 @@ from CustomPyQtWidgets import LiveInfoBox, MovieInfoBox, SeriesInfoBox
 import Threadpools
 from Threadpools import FetchDataWorker, SearchWorker, OnlineWorker, EPGWorker, MovieInfoFetcher, SeriesInfoFetcher, ImageFetcher
 
-CURRENT_VERSION = "V1.03.00"
+CURRENT_VERSION = "V1.02"
 
 is_windows  = sys.platform.startswith('win')
 is_mac      = sys.platform.startswith('darwin')
 is_linux    = sys.platform.startswith('linux')
 
-GITHUB_REPO = "Youri666/Xtream-m3u_plus-IPTV-Player"
+GITHUB_REPO = "crimeofheart/Xtream_Player"
 
 class LiveCategorySelectionDialog(QDialog):
     def __init__(self, parent=None):
@@ -2303,6 +2303,11 @@ class IPTVPlayerApp(QMainWindow):
                     elif ("mpv.exe" in self.external_player_command) or ("mpv.com" in self.external_player_command):
                         user_agent_argument = f"--user-agent=\"{self.current_user_agent}\""
                         player_cmd = f"{self.external_player_command} {user_agent_argument} \"{url}\""
+                        
+                    
+                    # Support MPC-HC with the proper command line
+                    elif "mpc-hc64.exe" in self.external_player_command:
+                        player_cmd = f"{self.external_player_command} \"{url}\""
                 
                     #Default support, run with VLC user agent argument
                     else:

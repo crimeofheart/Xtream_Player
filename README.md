@@ -3,10 +3,10 @@
 
 This IPTV player, built with Python and PyQt5, supports M3U_plus playlists and Xtream Codes API, allowing users to manage and play IPTV channels, movies, and series.
 
-> Feel free to report issues when encountering any problems: [Issues](https://github.com/Youri666/Xtream-m3u_plus-IPTV-Player/issues)
+> Feel free to report issues when encountering any problems: [Issues](https://github.com/crimeofheart/Xtream_Player/issues)
 
 # Download
-Download the latest version here: [Latest releases](https://github.com/Youri666/Xtream-m3u_plus-IPTV-Player/releases)
+Download the latest version here: [Latest releases](https://github.com/crimeofheart/Xtream_Player/releases)
 
 # Features
 - **Supports Windows, Linux and Mac OS**
