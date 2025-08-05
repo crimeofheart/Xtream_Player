@@ -16,7 +16,7 @@ else
 fi
 
 # Set variables
-MAIN_SCRIPT="IPTV M3U_Plus PLAYER by MY-1.py"
+MAIN_SCRIPT="Xtream_Player.py"
 BUILD_PATH="build"
 DIST_PATH="dist"
 
@@ -38,7 +38,7 @@ $PYINSTALLER \
   --noconsole \
   --noconfirm \
   --icon "Images/TV_icon.ico" \
-  --name "IPTV_Player" \
+  --name "Xtream_Player" \
   --distpath "$DIST_PATH" \
   --workpath "$BUILD_PATH" \
   --add-data "Images/TV_icon.ico:Images" \

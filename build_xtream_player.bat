@@ -11,12 +11,12 @@ echo Current working directory: %CD%
 echo ===============================
 
 REM Verify we're in the right directory by checking for main file
-IF NOT EXIST "IPTV M3U_Plus PLAYER by MY-1.py" (
+IF NOT EXIST "Xtream_Player.py" (
     echo ERROR: Main script not found in current directory!
     echo This batch file must be in the same folder as the Python files.
     echo.
     echo Please copy this batch file to the folder containing:
-    echo - IPTV M3U_Plus PLAYER by MY-1.py
+    echo - Xtream_Player.py
     echo - Images folder
     echo - Other Python files
     echo.
@@ -51,7 +51,7 @@ IF ERRORLEVEL 1 (
 echo ✓ PyInstaller is available
 
 REM Set variables
-SET MAIN_SCRIPT="IPTV M3U_Plus PLAYER by MY-1.py"
+SET MAIN_SCRIPT="Xtream_Player.py"
 SET BUILD_PATH=build
 SET DIST_PATH=dist
 
@@ -61,9 +61,12 @@ IF EXIST %BUILD_PATH% (
     rmdir /s /q %BUILD_PATH%
 )
 
-IF EXIST %DIST_PATH% (
-    echo Cleaning previous dist...
+IF EXIST %DIST_PATH%\NUL (
+    echo Cleaning previous dist directory...
     rmdir /s /q %DIST_PATH%
+) ELSE IF EXIST %DIST_PATH% (
+    echo Cleaning previous dist file...
+    del %DIST_PATH%
 )
 
 echo.
@@ -76,7 +79,7 @@ pyinstaller ^
   --noconsole ^
   --noconfirm ^
   --icon "Images/TV_icon.ico" ^
-  --name "IPTV_Player" ^
+  --name "Xtream_Player" ^
   --workpath %BUILD_PATH% ^
   --distpath %DIST_PATH% ^
   --add-data "Images/TV_icon.ico;Images" ^
@@ -118,7 +121,7 @@ IF ERRORLEVEL 1 (
 echo.
 echo ✓ Build completed successfully!
 echo.
-echo Your executable is in: %CD%\%DIST_PATH%\IPTV_Player.exe
+echo Your executable is in: %CD%\%DIST_PATH%\Xtream_Player.exe
 echo.
 
 REM Offer to open the dist folder

@@ -138,7 +138,7 @@ class LiveCategorySelectionDialog(QDialog):
 class IPTVPlayerApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"IPTV Player {CURRENT_VERSION}")
+        self.setWindowTitle(f"Xtream_Player {CURRENT_VERSION}")
         self.resize(1300, 900)
 
         self.user_agents = [

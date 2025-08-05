@@ -1,5 +1,5 @@
 
-# FREE OPENSOURCE M3U/XTREME IPTV PLAYER
+# Xtream_Player
 
 This IPTV player, built with Python and PyQt5, supports M3U_plus playlists and Xtream Codes API, allowing users to manage and play IPTV channels, movies, and series.
 
